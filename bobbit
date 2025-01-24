@@ -11,6 +11,7 @@ $0: <subcommand> [<args...>]
 
   create <job_id> <command>   Create a job.
   wait <job_id>               Wait for a job and exits with the exit code.
+  tail <job_id>               Prints logs of a job.
 EOL
 }
 

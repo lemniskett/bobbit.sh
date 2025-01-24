@@ -6,18 +6,23 @@ Simple background job executor.
 
 Start the daemon:
 
-```sh
+```
 bobbitd
 ```
 
 Run a job:
-```sh
+```
 bobbit create <job_name> <job_command>
 ```
 
 Wait for a job:
-```sh
+```
 bobbit wait <job_name>
+```
+
+Print job output:
+```
+bobbit tail <job_name>
 ```
 
 ## Configuration
