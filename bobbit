@@ -1,0 +1,95 @@
+#!/bin/sh
+# shellcheck disable=SC2068
+
+FIFO_PATH="${FIFO_PATH:-./bobbitd.fifo}"
+DATA_DIR="${DATA_DIR:-./data}"
+SEPARATOR="---"
+
+help() {
+    cat <<EOL
+$0: <subcommand> [<args...>]
+
+  create <job_id> <command>   Create a job.
+  wait <job_id>               Wait for a job and exits with the exit code.
+EOL
+}
+
+err() {
+    echo $@ >&2
+    exit 1
+}
+
+ensure_correct() {
+    if [ -z "$1" ]; then
+        help
+        exit 1
+    fi
+
+}
+
+ensure_running() {
+    if [ ! -p "$FIFO_PATH" ]; then
+        err "$FIFO_PATH is not a valid named pipe"
+    fi
+}
+
+case "$1" in
+    create)
+        id="$2"
+        command="$3"
+
+        ensure_correct "$id"
+        ensure_correct "$command"
+        ensure_running
+
+        echo "${id}${SEPARATOR}${command}" > "$FIFO_PATH"
+    ;;
+    wait)
+        id="$2"
+
+        ensure_correct "$id"
+        ensure_running
+
+        job_fifo="$DATA_DIR/$id.fifo"
+        job_exitcode="$DATA_DIR/$id.exitcode"
+
+        if [ -f "$job_exitcode" ]; then
+            read -r exitcode < "$job_exitcode"
+            echo "Job exited with code: $exitcode"
+            exit 0
+        fi
+
+        if [ ! -p "$job_fifo" ]; then
+            err "Job doesn't exist"
+        fi
+
+        while read < "$job_fifo"; do
+            "this line should not get executed :)"
+        done
+        read -r exitcode < "$job_exitcode"
+        echo "Job exited with code: $exitcode"
+        exit "$exitcode"
+    ;;
+    tail)
+        id="$2"
+
+        ensure_correct "$id"
+        ensure_running
+
+        job_fifo="$DATA_DIR/$id.fifo"
+        job_log="$DATA_DIR/$id.log"
+
+        if [ ! -p "$job_fifo" ]; then
+            err "Job is not running"
+        fi
+
+        tail -f "$job_log"
+    ;;
+    help)
+        help
+    ;;
+    *)
+        help
+        exit 1
+    ;;
+esac
