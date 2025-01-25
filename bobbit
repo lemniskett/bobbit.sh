@@ -13,12 +13,13 @@ $0: <subcommand> [<args...>]
   wait <job_id>               Wait for a job and exits with the exit code.
   tail <job_id>               Prints logs of a job.
   list                        Lists all running jobs
+  is-running                  Checks if bobbitd is running
 EOL
 }
 
 err() {
-    echo $@ >&2
-    exit 1
+    echo "$2" >&2
+    exit "$1"
 }
 
 ensure_args() {
@@ -26,20 +27,20 @@ ensure_args() {
     args_required=$2
     if [ "$args_count" -ne "$args_required" ]; then
         help
-        exit 1
+        exit 2
     fi
 }
 
 ensure_correct() {
     if [ -z "$1" ]; then
         help
-        exit 1
+        exit 2
     fi
 }
 
 ensure_running() {
     if [ ! -p "$FIFO_PATH" ]; then
-        err "$FIFO_PATH is not a valid named pipe, is bobbitd running?"
+        err 3 "$FIFO_PATH is not a valid named pipe, is bobbitd running?"
     fi
 }
 
@@ -57,7 +58,7 @@ case "$1" in
         ensure_running
 
         if [ -p "$job_fifo" ]; then
-            err "Job \"$id\" is in progress"
+            err 4 "Job \"$id\" is in progress"
         fi
 
         echo "${id}${SEPARATOR}${command}" > "$FIFO_PATH"
@@ -75,21 +76,26 @@ case "$1" in
 
         if [ -f "$job_exitcode" ]; then
             read -r exitcode < "$job_exitcode"
-            echo "Job \"$id\" exited with code: $exitcode"
+            if [ "$exitcode" -ne 0 ]; then
+                err 7 "Job \"$id\" exited with code: $exitcode"
+            fi
             exit 0
         fi
 
         if [ ! -f "$job_lock" ]; then
-            err "Job \"$id\" doesn't exist"
+            err 5 "Job \"$id\" doesn't exist"
         fi
 
         while true; do
             [ ! -f "$job_lock" ] && break
             sleep 1
         done
+
         read -r exitcode < "$job_exitcode"
-        echo "Job \"$id\" exited with code: $exitcode"
-        exit "$exitcode"
+        if [ "$exitcode" -ne 0 ]; then
+            err 7 "Job \"$id\" exited with code: $exitcode"
+        fi
+        exit 0
     ;;
     tail)
         shift
@@ -103,7 +109,7 @@ case "$1" in
         job_log="$DATA_DIR/$id.log"
 
         if [ ! -f "$job_lock" ]; then
-            err "Job \"$id\" is not running"
+            err 6 "Job \"$id\" is not running"
         fi
 
         tail -f "$job_log"
@@ -111,8 +117,17 @@ case "$1" in
     list)
         shift
         ensure_args $# 0
+
+        ensure_running
+
         cd "$DATA_DIR" || exit 1
         find . -name '*.lock' | sed -e 's#^\./##g' -e 's#\.lock$##g'
+    ;;
+    is-running)
+        shift
+        ensure_args $# 0
+
+        ensure_running
     ;;
     help)
         help
