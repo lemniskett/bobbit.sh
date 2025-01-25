@@ -10,8 +10,8 @@ remove_fifo() {
     exit 0
 }
 
-trap remove_fifo SIGINT
-trap remove_fifo SIGTERM
+trap remove_fifo INT
+trap remove_fifo TERM
 
 mkdir -p "$(dirname "$FIFO_PATH")"
 rm -f "$FIFO_PATH"
