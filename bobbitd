@@ -4,32 +4,29 @@
 FIFO_PATH="${FIFO_PATH:-./bobbitd.fifo}"
 DATA_DIR="${DATA_DIR:-./data}"
 SEPARATOR="---"
+EXECUTOR="bobbit-executor"
 
-mkdir -p "$(dirname $FIFO_PATH)"
+mkdir -p "$(dirname "$FIFO_PATH")"
 rm -f "$FIFO_PATH"
 mkfifo "$FIFO_PATH"
 mkdir -p "$DATA_DIR"
 
-log() {
-    echo "$(date "+%D %H:%M:%S") - $*"
-}
-
-log "Data dir: $DATA_DIR"
-log "Listening $FIFO_PATH"
+echo "Data dir: $DATA_DIR"
+echo "Listening $FIFO_PATH"
 
 while read -r JOB < "$FIFO_PATH"; do
     case "$JOB" in
         *---*)
         job_id="$(echo "$JOB" | sed "s/$SEPARATOR.*//")"
         job_command="$(echo "$JOB" | sed "s/.*$SEPARATOR//")"
-        log "Job: $job_id, command: $job_command"
-        sh -c "
-            rm -f $DATA_DIR/${job_id}.fifo $DATA_DIR/${job_id}.exitcode;
-            mkfifo $DATA_DIR/${job_id}.fifo;
+        job_timestamp="$(date "+%D %H:%M:%S")"
+        echo "Timestamp: $job_timestamp, Job: $job_id, Command: $job_command"
+        env PS4="$job_id: " sh -xc "
+            rm -f $DATA_DIR/${job_id}.exitcode $DATA_DIR/${job_id}.lock;
+            touch $DATA_DIR/${job_id}.lock;
             $job_command > $DATA_DIR/${job_id}.log 2>&1;
-            echo \$? > $DATA_DIR/${job_id}.exitcode; 
-            echo -en "\004" > $DATA_DIR/${job_id}.fifo;
-            rm $DATA_DIR/${job_id}.fifo;
+            echo \$? > $DATA_DIR/${job_id}.exitcode;
+            rm $DATA_DIR/${job_id}.lock;
         " &
         ;;
     esac        

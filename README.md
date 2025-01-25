@@ -25,6 +25,11 @@ Print job output:
 bobbit tail <job_name>
 ```
 
+List running jobs:
+```
+bobbit list
+```
+
 ## Configuration
 
 Configurations are only possible with environment variables

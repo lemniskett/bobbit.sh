@@ -1,5 +1,5 @@
 #!/bin/sh
-# shellcheck disable=SC2068
+# shellcheck disable=SC2068,SC3061
 
 FIFO_PATH="${FIFO_PATH:-./bobbitd.fifo}"
 DATA_DIR="${DATA_DIR:-./data}"
@@ -12,6 +12,7 @@ $0: <subcommand> [<args...>]
   create <job_id> <command>   Create a job.
   wait <job_id>               Wait for a job and exits with the exit code.
   tail <job_id>               Prints logs of a job.
+  list                        Lists all running jobs
 EOL
 }
 
@@ -20,12 +21,20 @@ err() {
     exit 1
 }
 
+ensure_args() {
+    args_count=$1
+    args_required=$2
+    if [ $1 -ne $2 ]; then
+        help
+        exit 1
+    fi
+}
+
 ensure_correct() {
     if [ -z "$1" ]; then
         help
         exit 1
     fi
-
 }
 
 ensure_running() {
@@ -36,55 +45,72 @@ ensure_running() {
 
 case "$1" in
     create)
-        id="$2"
-        command="$3"
+        shift
+        ensure_args $# 2
+        id="$1"
+        command="$2"
+
+        job_fifo="$DATA_DIR/$id.fifo"
 
         ensure_correct "$id"
         ensure_correct "$command"
         ensure_running
 
+        if [ -p "$job_fifo" ]; then
+            err "Job \"$id\" is in progress"
+        fi
+
         echo "${id}${SEPARATOR}${command}" > "$FIFO_PATH"
     ;;
     wait)
-        id="$2"
+        shift
+        ensure_args $# 1
+        id="$1"
 
         ensure_correct "$id"
         ensure_running
 
-        job_fifo="$DATA_DIR/$id.fifo"
+        job_lock="$DATA_DIR/$id.lock"
         job_exitcode="$DATA_DIR/$id.exitcode"
 
         if [ -f "$job_exitcode" ]; then
             read -r exitcode < "$job_exitcode"
-            echo "Job exited with code: $exitcode"
+            echo "Job \"$id\" exited with code: $exitcode"
             exit 0
         fi
 
-        if [ ! -p "$job_fifo" ]; then
-            err "Job doesn't exist"
+        if [ ! -f "$job_lock" ]; then
+            err "Job \"$id\" doesn't exist"
         fi
 
-        while read < "$job_fifo"; do
-            "this line should not get executed :)"
+        while true; do
+            [ ! -f "$job_lock" ] && break
+            sleep 1
         done
         read -r exitcode < "$job_exitcode"
-        echo "Job exited with code: $exitcode"
+        echo "Job \"$id\" exited with code: $exitcode"
         exit "$exitcode"
     ;;
     tail)
-        id="$2"
+        ensure_args $# 1
+        id="$1"
 
         ensure_correct "$id"
         ensure_running
 
-        job_fifo="$DATA_DIR/$id.fifo"
+        job_lock="$DATA_DIR/$id.lock"
         job_log="$DATA_DIR/$id.log"
 
-        if [ ! -p "$job_fifo" ]; then
-            err "Job is not running"
+        if [ ! -f "$job_lock" ]; then
+            err "Job \"$id\" is not running"
         fi
 
         tail -f "$job_log"
+    ;;
+    list)
+        ensure_args $# 0
+        cd "$DATA_DIR" || exit 1
+        ls -- *.lock 2> /dev/null| sed 's/\.lock$//g'
     ;;
     help)
         help
