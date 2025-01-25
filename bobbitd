@@ -4,27 +4,34 @@
 FIFO_PATH="${FIFO_PATH:-./bobbitd.fifo}"
 DATA_DIR="${DATA_DIR:-./data}"
 SEPARATOR="---"
-EXECUTOR="bobbit-executor"
+
+remove_fifo() {
+    rm -f "$FIFO_PATH"
+    exit 0
+}
+
+trap remove_fifo SIGINT
+trap remove_fifo SIGTERM
 
 mkdir -p "$(dirname "$FIFO_PATH")"
 rm -f "$FIFO_PATH"
 mkfifo "$FIFO_PATH"
 mkdir -p "$DATA_DIR"
 
-echo "Data dir: $DATA_DIR"
-echo "Listening $FIFO_PATH"
+echo "data dir: $DATA_DIR"
+echo "fifo_path: $FIFO_PATH"
 
 while read -r JOB < "$FIFO_PATH"; do
     case "$JOB" in
-        *---*)
+        *"$SEPARATOR"*)
         job_id="$(echo "$JOB" | sed "s/$SEPARATOR.*//")"
         job_command="$(echo "$JOB" | sed "s/.*$SEPARATOR//")"
         job_timestamp="$(date "+%D %H:%M:%S")"
-        echo "Timestamp: $job_timestamp, Job: $job_id, Command: $job_command"
-        env PS4="$job_id: " sh -xc "
+        echo "timestamp: $job_timestamp, job: $job_id, command: $job_command"
+        sh -c "
             rm -f $DATA_DIR/${job_id}.exitcode $DATA_DIR/${job_id}.lock;
             touch $DATA_DIR/${job_id}.lock;
-            $job_command > $DATA_DIR/${job_id}.log 2>&1;
+            $job_command 2>&1 | tee $DATA_DIR/${job_id}.log | sed 's/^/$job_id: /';
             echo \$? > $DATA_DIR/${job_id}.exitcode;
             rm $DATA_DIR/${job_id}.lock;
         " &
