@@ -31,7 +31,7 @@ while read -r JOB < "$FIFO_PATH"; do
         sh -c "
             rm -f $DATA_DIR/${job_id}.exitcode $DATA_DIR/${job_id}.lock;
             touch $DATA_DIR/${job_id}.lock;
-            $job_command 2>&1 | tee $DATA_DIR/${job_id}.log | sed 's/^/$job_id: /';
+            $job_command > $DATA_DIR/${job_id}.log 2>&1;
             echo \$? > $DATA_DIR/${job_id}.exitcode;
             rm $DATA_DIR/${job_id}.lock;
         " &
