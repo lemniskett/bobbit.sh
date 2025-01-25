@@ -39,7 +39,7 @@ ensure_correct() {
 
 ensure_running() {
     if [ ! -p "$FIFO_PATH" ]; then
-        err "$FIFO_PATH is not a valid named pipe"
+        err "$FIFO_PATH is not a valid named pipe, is bobbitd running?"
     fi
 }
 
