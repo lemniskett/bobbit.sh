@@ -24,7 +24,7 @@ err() {
 ensure_args() {
     args_count=$1
     args_required=$2
-    if [ $1 -ne $2 ]; then
+    if [ "$args_count" -ne "$args_required" ]; then
         help
         exit 1
     fi
@@ -112,7 +112,7 @@ case "$1" in
         shift
         ensure_args $# 0
         cd "$DATA_DIR" || exit 1
-        ls -- *.lock 2> /dev/null| sed 's/\.lock$//g'
+        find . -name '*.lock' | sed -e 's#^\./##g' -e 's#\.lock$##g'
     ;;
     help)
         help
