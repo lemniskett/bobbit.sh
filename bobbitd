@@ -2,7 +2,7 @@
 # shellcheck disable=SC2068,SC2140
 
 FIFO_PATH="${FIFO_PATH:-./bobbitd.fifo}"
-DATA_DIR="${DATA_DIR:-./data}"
+DATA_DIR="${DATA_DIR:-./bobbitd}"
 SEPARATOR="---"
 
 remove_fifo() {
