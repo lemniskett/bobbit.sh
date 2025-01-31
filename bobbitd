@@ -28,7 +28,7 @@ while read -r JOB < "$FIFO_PATH"; do
         job_command="$(echo "$JOB" | sed "s/.*$SEPARATOR//")"
         job_timestamp="$(date "+%D %H:%M:%S")"
         echo "timestamp: $job_timestamp, job: $job_id, command: $job_command"
-        PS4="${job_id}: " sh -xc "
+        env PS4="${job_id}: " sh -xc "
             rm -f $DATA_DIR/${job_id}.exitcode $DATA_DIR/${job_id}.lock;
             touch $DATA_DIR/${job_id}.lock;
             env JOB_ID=${job_id} ${job_command} > $DATA_DIR/${job_id}.log 2>&1;
