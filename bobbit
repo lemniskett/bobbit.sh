@@ -51,13 +51,13 @@ case "$1" in
         id="$1"
         command="$2"
 
-        job_fifo="$DATA_DIR/$id.fifo"
+        job_lock="$DATA_DIR/$id.lock"
 
         ensure_correct "$id"
         ensure_correct "$command"
         ensure_running
 
-        if [ -p "$job_fifo" ]; then
+        if [ -f "$job_lock" ]; then
             err 4 "Job \"$id\" is in progress"
         fi
 
